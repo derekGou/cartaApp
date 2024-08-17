@@ -1,5 +1,5 @@
 "use client"
-import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
+import { SignedIn, SignedOut, UserButton, SignOutButton } from '@clerk/nextjs'
 
 export default function Home() {
   return (
@@ -30,11 +30,17 @@ export default function Home() {
                   Get started
                 </button>
               </a>
+              <a href="/sign-in">
+                <button className="bg-transparent border-2 hover:bg-transparent text-white">
+                  Sign In
+                </button>
+              </a>
             </SignedOut>
             <SignedIn>
               <a href="/generate">
                 <button>Let's go!</button>
               </a>
+              <SignOutButton/>
             </SignedIn>
           </div>
         </div>
