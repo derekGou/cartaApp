@@ -1,7 +1,7 @@
 "use client"
 
 import { db } from "@/firebase"
-import { useUser } from "@clerk/nextjs"
+import { useUser, SignOutButton } from "@clerk/nextjs"
 import { collection, doc, getDocs, setDoc, getDoc } from "firebase/firestore"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
@@ -11,7 +11,6 @@ import { IconContext } from "react-icons"
 import { PiSidebar } from "react-icons/pi";
 import { IoCreateOutline } from "react-icons/io5";
 import { AiOutlineLoading } from "react-icons/ai";
-import { SignOutButton } from "@clerk/nextjs"
 
 export default function Generate(){
     const [input, setInput] = useState('')
