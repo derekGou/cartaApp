@@ -3,31 +3,66 @@
 @tailwind utilities;
 
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground-rgb: 255, 255, 255;
-    --background-start-rgb: 0, 0, 0;
-    --background-end-rgb: 0, 0, 0;
-  }
+  --foreground-rgb: 250, 250, 250;
+  --background-start-rgb: 51, 51, 85;
+  --background-end-rgb: 68, 68, 68;
 }
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  overflow-x: hidden;
+  height: 100vh;
+  width: 100vw;
+  background-image: linear-gradient(
+    to bottom,
+    rgb(var(--background-end-rgb)), 
+    rgb(var(--background-start-rgb))
+  );
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
   }
+}
+
+h1 {
+  font-size: 3rem;
+  font-weight: 300;
+  font-family: "IBM Plex Mono";
+}
+h2 {
+  font-size: 1.2rem;
+  font-weight: 200;
+  font-family: "IBM Plex Mono";
+}
+h3 {
+  font-size: 1.5rem;
+  font-weight: 100;
+}
+p {
+  font-weight: 200;
+  font-family: "IBM Plex Mono";
+}
+
+hr {
+  width: 100%;
+}
+
+ol {
+  font-weight: 200;
+  font-family: "IBM Plex Mono";
+}
+
+button {
+  padding: 0.75rem 1.5rem;
+  border-radius: 0.25rem;
+  background-color: rgb(200, 200, 222);
+  color: black;
+  text-align: center;
+  transition: background-color 0.5s;
+}
+button:hover {
+  background-color: rgb(255, 255, 255);
+  transition: background-color 0.5s;
 }
