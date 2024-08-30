@@ -1,27 +1,29 @@
 "use client"
 
 import { db } from "@/firebase"
-import { useUser, SignOutButton } from "@clerk/nextjs"
+import { useUser, SignOutButton, UserButton } from "@clerk/nextjs"
 import { collection, doc, getDocs, setDoc, getDoc } from "firebase/firestore"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
-import { useEffect } from "react"
+import { useState, useEffect, useLayoutEffect } from "react"
 import { IoIosClose } from "react-icons/io";
 import { IconContext } from "react-icons"
 import { PiSidebar } from "react-icons/pi";
 import { IoCreateOutline } from "react-icons/io5";
 import { AiOutlineLoading } from "react-icons/ai";
+import { LuMenuSquare } from "react-icons/lu";
+import MarkdownView from 'react-showdown';
 
 export default function Generate(){
     const [input, setInput] = useState('')
     const {isLoaded, isSignedIn, user} = useUser()
     const [page, setPage] = useState('create')
     const [sessions, setSessions] = useState([])
-    const [sideBar, setSideBar] = useState('16rem')
+    const [sideBar, setSideBar] = useState('225px')
     const [loading, setLoading] = useState(false)
     const [showQA, setShowQA] = useState('Q')
     const [showQ, setShowQ] = useState('flex')
     const [showA, setShowA] = useState('none')
+    const [screenType, setScreenType] = useState('')
 
     useEffect(()=>{
         if (showQA=='Q'){
@@ -32,6 +34,14 @@ export default function Generate(){
             setShowA('flex')
         }
     }, [showQA])
+
+    useEffect(()=>{
+        if (isLoaded){
+            if (!user){
+                window.location.href="/"
+            }
+        }
+    }, [isLoaded])
 
     const [subject, setSubject] = useState()
     useEffect(()=>{
@@ -146,26 +156,41 @@ export default function Generate(){
         } return rows
     }
     const toggleSidebar = () => {
-        if (sideBar=='16rem'){
-            setSideBar('0rem')
+        if (sideBar=='225px'){
+            setSideBar('0px')
             return
         } else {
-            setSideBar('16rem')
+            setSideBar('225px')
             return
         }
     }
     const showIcons = () => {
-        if (sideBar=='16rem'){
+        if (sideBar=='225px'){
             return "none"
         } else {
-            return "flex"
+            if (screenType=="computer"){
+                return "flex"
+            } else {
+                return "none"
+            }
         }
     }
     const hideSidebar = () => {
-        if (sideBar=='16rem'){
-            return "flex"
+        if (sideBar=='225px'){
+            if (screenType=="computer"){
+                return "flex"
+            } else {
+                return "none"
+            }
         } else {
             return "none"
+        }
+    }
+    const showMenuButton = () => {
+        if (screenType=="computer"){
+            return "none"
+        } else {
+            return "flex"
         }
     }
     const newSession = async () => {
@@ -256,77 +281,146 @@ export default function Generate(){
         setLoading(false)
     }
 
+    const handleKeyPress = (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            onAnswer();
+        }
+    };
+    const handleNewTopics = (event) => {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            newSession();
+        }
+    };
+
+    const [mobileMenu, setMobileMenu] = useState('none')
+    useLayoutEffect(() => {
+        function updateSize() {
+            if (window.innerWidth>768){
+                setScreenType('computer')
+                setMobileMenu('none')
+                return
+            } else {
+                setScreenType('mobile')
+                toggleSidebar()
+                return
+            }
+        }
+        window.addEventListener('resize', updateSize);
+        updateSize();
+        return () => window.removeEventListener('resize', updateSize);
+    }, []);
+
+    useEffect(() => {
+        if (screenType=='computer'){
+            setSideBar('225px')
+        } else {
+            setSideBar('0px')
+        }
+    }, [screenType])
+    
+    const handleMenuToggle = () => {
+        if (mobileMenu=="none"){
+            setMobileMenu('flex')
+            return
+        } else {
+            setMobileMenu('none')
+            return
+        }
+    }
+
     return (
-        <div className="h-screen w-screen p-12 flex items-center justify-center">
-            <div className=" h-full w-full bg-[#ffffff88] rounded flex flex-row items-center justify-center overflow-hidden">
+        <div className="h-screen w-screen md:p-12 p-0 flex items-center justify-center">
+            <div className=" h-full w-full bg-[#ffffff88] md-rounded flex flex-row items-center justify-center overflow-hidden">
                 <div style={{ width: sideBar }} className="bg-gray-200 h-full flex flex-col items-center justify-start transition-all">
                     <div className="p-4 flex flex-row w-full">
                         <div className="grow flex items-center justify-start">
-                            <div style={{ display: hideSidebar() }} className="rounded p-2 bg-gray-200 hover:brightness-90">
+                            <div style={{ display: hideSidebar() }} className="cursor-pointer rounded p-2 bg-gray-200 hover:brightness-90" onClick={toggleSidebar}>
                                 <IconContext.Provider value={{ color: 'black', size: '2rem' }}>
-                                    <PiSidebar className="cursor-pointer" onClick={toggleSidebar}/>
+                                    <PiSidebar/>
                                 </IconContext.Provider>
                             </div>
                         </div>
                         <div className="grow flex items-center justify-end">
-                            <div style={{ display: hideSidebar() }} className="rounded p-2 bg-gray-200 hover:brightness-90">
+                            <div style={{ display: hideSidebar() }} className="cursor-pointer rounded p-2 bg-gray-200 hover:brightness-90" onClick={() => {
+                                setShowCreate('flex')
+                                setPage('create')
+                            }}>
                                 <IconContext.Provider value={{ color: 'black', size: '2rem' }}>
-                                    <IoCreateOutline className="cursor-pointer" onClick={() => {
-                                        setShowCreate('flex')
-                                        setPage('create')
-                                    }}/>
+                                    <IoCreateOutline/>
                                 </IconContext.Provider>
                             </div>
                         </div>
                     </div>
-                    <div className="w-full flex flex-col p-4 pt-2">{renderPrevSessions()}</div>
+                    <div className="w-full flex flex-col p-4 pt-2">
+                        <p className="p-2 text-black font-bold text-[0.8rem] w-full text-left ">Previous Sessions</p>
+                        <hr className="px-2 bg-black h-px mb-2"/>
+                        {renderPrevSessions()}
+                    </div>
                 </div>
                 <div className="px-0 bg-white h-full grow flex flex-col">
-                    <div className="w-full p-4 border-b-2 h-20 flex flex-row items-center gap-4">
-                        <div style={{ display: showIcons() }} className="rounded p-2 bg-white hover:brightness-90">
+                    <div className="z-10 bg-white w-full p-4 border-b-2 h-20 flex flex-row items-center gap-8">
+                        <div style={{ display: showIcons() }} className="cursor-pointer rounded p-2 bg-white hover:brightness-90" onClick={toggleSidebar}>
                             <IconContext.Provider value={{ color: 'black', size: '2rem' }}>
-                                <PiSidebar className="cursor-pointer" onClick={toggleSidebar}/>
+                                <PiSidebar/>
+                            </IconContext.Provider>
+                        </div>
+                        <div style={{ display: showMenuButton() }} onClick={() => {handleMenuToggle()}} className="cursor-pointer rounded p-2 bg-white hover:brightness-90">
+                            <IconContext.Provider value={{ color: 'black', size: '2rem' }}>
+                                <LuMenuSquare/>
                             </IconContext.Provider>
                         </div>
                         <a href='/'>
                             <h2 className="text-black text-[1.5rem] h-8 hover:underline cursor-pointer">carta</h2>
                         </a>
-                        <SignOutButton className="border-2 p-2" redirectUrl="/"/>
                         <div className="grow"/>
                         <div style={{ display: showIcons() }} className="cursor-pointer rounded p-2 bg-white hover:brightness-90" onClick={() => {setPage('create')}}>
                             <IconContext.Provider value={{ color: 'black', size: '2rem' }}>
                                 <IoCreateOutline/>
                             </IconContext.Provider>
                         </div>
+                        <div style={{ display: showMenuButton() }} className="cursor-pointer rounded p-2 bg-white hover:brightness-90" onClick={() => {setPage('create')}}>
+                            <IconContext.Provider value={{ color: 'black', size: '2rem' }}>
+                                <IoCreateOutline/>
+                            </IconContext.Provider>
+                        </div>
+                        <UserButton/>
                     </div>
                     <div className="w-full h-full flex flex-col p-12 overflow-x-hidden overflow-y-scroll">
                         <div style={{ display: showCreate }} className="flex w-full h-full box-border bg-white flex items-center justify-center flex-col gap-4">
                             <h3 className="text-center text-black">New Chat</h3>
                             <p className="text-black">Input your prompt:</p>
-                            <input className="text-black border-2 focus:outline-black p-2" value={input} onChange={(e) => {setInput(e.target.value)}} placeholder="Study topic"></input>
+                            <input className="text-black border-2 focus:outline-black p-2" value={input} onChange={(e) => {
+                                setInput(e.target.value)
+                                handleNewTopics()
+                            }} placeholder="Study topic"></input>
                             <button style = {{ display: buttonDisplayLoad() }} className="border-2" onClick={() => {newSession()}}>Let's go!</button>
                             <IconContext.Provider value={{ color: 'black', size: '2rem' }}>
                                 <AiOutlineLoading style = {{ display: loaderDisplayLoad() }} className="animate-spin"/>
                             </IconContext.Provider>
                         </div>
                         <div style={{ display: showOtherPages }} className="flex w-full h-full box-border bg-white flex items-center justify-center flex-col gap-4">
-                            <div className="flex flex-col items-center justify-center gap-4">
+                            <div className="flex grow flex-col items-center justify-center gap-4 w-full">
                                 <IconContext.Provider value={{ color: 'black', size: '2rem' }}>
                                     <AiOutlineLoading style = {{ display: cardLoading }} className="animate-spin"/>
                                 </IconContext.Provider>
-                                <div className="flex flex-col items-center justify-center gap-4">
+                                <div className="grow flex flex-col items-center justify-center gap-4 w-full">
                                     <h3 className="text-black w-full text-center">{subject}: {card[0]}</h3>
-                                    <div style={{ display: showQ }} className="p-4 border-2 flex flex-col gap-4 items-center justify-center rounded">
-                                        <div className="p-8 border-2 flex flex-col gap-4 items-center justify-center rounded">
-                                            <p className="text-black">{card[1]}</p>
+                                    <div style={{ display: showQ }} className="w-full grow p-4 border-2 flex flex-col gap-4 items-center justify-center rounded">
+                                        <div className="grow p-8 w-full border-2 flex flex-col gap-4 items-center justify-center rounded">
+                                            <p className="text-center text-black">{card[1]}</p>
                                         </div>
                                         <div className="flex flex-row gap-4 w-full">
-                                            <input value={answer} onChange={(e)=>{setAnswer(e.target.value)}} className="text-black border-2 focus:outline-black p-2 grow" placeholder="Your answer"></input>
+                                            <input value={answer} onChange={(e)=>{
+                                                setAnswer(e.target.value)
+                                                handleKeyPress()
+                                            }} className="text-black border-2 focus:outline-black p-2 grow" placeholder="Your answer"></input>
                                             <button onClick={()=>{onAnswer()}} className="border-2">Check</button>
                                         </div>
                                     </div>
-                                    <div style={{ display: showA }} className="p-4 border-2 flex flex-col gap-4 items-center justify-center rounded">
-                                        <div className="p-8 border-2 flex flex-col gap-4 items-center justify-center rounded">
+                                    <div style={{ display: showA }} className="w-full grow p-4 border-2 flex flex-col gap-4 items-center justify-center rounded">
+                                        <div className="grow p-8 w-full border-2 flex flex-col gap-4 items-center justify-center rounded">
                                             <p className="text-black">{feedback[0]+'!'}</p>
                                             <p className="text-black">{feedback[1]}</p>
                                             <button onClick={()=>{
@@ -336,6 +430,11 @@ export default function Generate(){
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                        <div style={{ display: mobileMenu }} className="pt-20 absolute flex w-screen h-screen top-0 left-0 box-border bg-gray-200 flex items-center justify-center flex-col gap-4">
+                            <div className="p-8 h-full w-full">
+                                <div className="w-full flex flex-col p-4 pt-2">{renderPrevSessions()}</div>
                             </div>
                         </div>
                     </div>

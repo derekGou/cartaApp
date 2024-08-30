@@ -8,7 +8,7 @@ If an answer is correct, return true. The answer must be factually correct and c
 
 If not, then return false.
 
-If incorrect, you should also return a tip for them to improve their answer. If the answer is incorrect, return an empty string for the improvement.
+You should also return a tip for them to improve their answer.
 
 Return as {
     'correct': return_value,

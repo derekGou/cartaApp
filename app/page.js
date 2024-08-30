@@ -40,7 +40,7 @@ export default function Home() {
               <a href="/generate">
                 <button>Let's go!</button>
               </a>
-              <SignOutButton/>
+              <SignOutButton className="bg-transparent border-2 hover:bg-transparent text-white"/>
             </SignedIn>
           </div>
         </div>
