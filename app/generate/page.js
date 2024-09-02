@@ -13,7 +13,7 @@ import { AiOutlineLoading } from "react-icons/ai";
 import { LuMenuSquare } from "react-icons/lu";
 import { IoMdClose } from "react-icons/io";
 import MarkdownView from 'react-showdown';
-import pdfToText from "react-pdftotext-temppackage";
+import pdfToText from "react-pdftotext";
 
 export default function Generate(){
     const [input, setInput] = useState('')
