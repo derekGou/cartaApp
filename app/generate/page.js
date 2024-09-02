@@ -11,19 +11,22 @@ import { PiSidebar } from "react-icons/pi";
 import { IoCreateOutline } from "react-icons/io5";
 import { AiOutlineLoading } from "react-icons/ai";
 import { LuMenuSquare } from "react-icons/lu";
+import { IoMdClose } from "react-icons/io";
 import MarkdownView from 'react-showdown';
+import pdfToText from "react-pdftotext-temppackage";
 
 export default function Generate(){
     const [input, setInput] = useState('')
     const {isLoaded, isSignedIn, user} = useUser()
     const [page, setPage] = useState('create')
     const [sessions, setSessions] = useState([])
-    const [sideBar, setSideBar] = useState('225px')
+    const [sideBar, setSideBar] = useState('256px')
     const [loading, setLoading] = useState(false)
     const [showQA, setShowQA] = useState('Q')
     const [showQ, setShowQ] = useState('flex')
     const [showA, setShowA] = useState('none')
     const [screenType, setScreenType] = useState('')
+    const [promptError, setPromptError] = useState('')
 
     useEffect(()=>{
         if (showQA=='Q'){
@@ -135,6 +138,26 @@ export default function Generate(){
     useEffect(()=>{
         updateSessions()
     }, [isLoaded])
+
+    const deleteSessions = async (currKey) => {
+        if (isLoaded){
+            if (user){
+                const docRef = doc(collection(db, 'flashcard'), user.id)
+                const docSnap = await getDoc(docRef)
+                if (docSnap.exists()){
+                    var storedSessions = docSnap.data()
+                    if (Object.keys(storedSessions).includes(currKey)){
+                        delete storedSessions[currKey];
+                        console.log(storedSessions)
+                        setDoc(docRef, storedSessions)
+                        setSessions(Object.keys(storedSessions).sort())
+                    }
+                }
+            }
+            renderPrevSessions();
+        }
+    }
+
     const renderPrevSessions = () => {
         let rows = []
         for (let i = 0; i<sessions.length; i++){
@@ -142,8 +165,16 @@ export default function Generate(){
                 <div onClick={() => {
                         setPage(i)
                         setShowOtherPages('flex')
-                    }} key={i} className="p-2 w-full bg-gray-200 hover:brightness-90 cursor-pointer">
+                    }} key={sessions[i]} className="flex wrap gap-1 flex-row p-2 w-full bg-gray-200 hover:brightness-90 cursor-pointer">
                     <p className="w-full text-left text-black">{sessions[i]}</p>
+                    <div className="grow"/>
+                    <div className="h-full flex items-center align-center">
+                        <div className="rounded-full hover:bg-white p-1" onClick={()=>{deleteSessions(sessions[i])}}>
+                            <IconContext.Provider value={{ color: 'black', size: '1rem' }}>
+                                <IoMdClose/>
+                            </IconContext.Provider>
+                        </div>
+                    </div>
                 </div>
             )
         }
@@ -156,16 +187,16 @@ export default function Generate(){
         } return rows
     }
     const toggleSidebar = () => {
-        if (sideBar=='225px'){
+        if (sideBar=='256px'){
             setSideBar('0px')
             return
         } else {
-            setSideBar('225px')
+            setSideBar('256px')
             return
         }
     }
     const showIcons = () => {
-        if (sideBar=='225px'){
+        if (sideBar=='256px'){
             return "none"
         } else {
             if (screenType=="computer"){
@@ -176,7 +207,7 @@ export default function Generate(){
         }
     }
     const hideSidebar = () => {
-        if (sideBar=='225px'){
+        if (sideBar=='256px'){
             if (screenType=="computer"){
                 return "flex"
             } else {
@@ -198,7 +229,6 @@ export default function Generate(){
             setLoading(true)
             if (user){
                 if (user.id){
-                    setSessions((prevData) => [...prevData, input])
                     const docRef = doc(collection(db, 'flashcard'), user.id)
                     const docSnap = await getDoc(docRef)
                     let prevData = {}
@@ -225,7 +255,13 @@ export default function Generate(){
                     }
                     returnedTopics=JSON.parse(returnedTopics)
                     returnedTopics = returnedTopics['subtopics']
-                    
+                    if (returnedTopics[0]=='inputError'){
+                        setLoading(false)
+                        setInput('')
+                        setPromptError('Please input a legitimate topic')
+                        return
+                    }
+
                     var topics = {}
                     for (let i = 0; i<returnedTopics.length; i++){
                         topics[returnedTopics[i]] = {
@@ -238,10 +274,14 @@ export default function Generate(){
                             month: date.getMonth()+1,
                             year: date.getFullYear(),
                         },
+                        curriculum: {
+
+                        },
                         topics
                     }
                     await setDoc(docRef, prevData)
                     setInput('')
+                    setSessions((prevData) => [...prevData, input])
                 }
             }
             setLoading(false)
@@ -314,7 +354,7 @@ export default function Generate(){
 
     useEffect(() => {
         if (screenType=='computer'){
-            setSideBar('225px')
+            setSideBar('256px')
         } else {
             setSideBar('0px')
         }
@@ -329,6 +369,34 @@ export default function Generate(){
             return
         }
     }
+
+    const [dragOver, setDragOver] = useState(false);
+    const [selectedFile, setSelectedFile] = useState(null);
+    const handleDragOver = (e) => {
+        e.preventDefault();
+        setDragOver(true);
+    };
+    const handleDragLeave = (e) => {
+        e.preventDefault();
+        setDragOver(false);
+    };
+    const handleDrop = (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer.files[0];
+        setSelectedFile(file);
+        setDragOver(false);
+    };
+    const handleFileChange = (e) => {
+        const file = e.target.files[0];
+        setSelectedFile(file);
+    };
+    const handleUpload = async () => {
+        var currFile = selectedFile
+        var newFile = ''
+        pdfToText(currFile).then((text) => {console.log(text)})
+        console.log(newFile)
+        setSelectedFile(null)
+    };
 
     return (
         <div className="h-screen w-screen md:p-12 p-0 flex items-center justify-center">
@@ -393,9 +461,28 @@ export default function Generate(){
                             <p className="text-black">Input your prompt:</p>
                             <input className="text-black border-2 focus:outline-black p-2" value={input} onChange={(e) => {
                                 setInput(e.target.value)
-                                handleNewTopics()
-                            }} placeholder="Study topic"></input>
+                                handleNewTopics(e)
+                            }} placeholder="Study topic"/>
                             <button style = {{ display: buttonDisplayLoad() }} className="border-2" onClick={() => {newSession()}}>Let's go!</button>
+                            <p className="text-black">OR</p>
+                            <div
+                                className={dragOver ? "bg-white" : ""}
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                            >
+                                <button style={{display: selectedFile ? "none" : "flex"}} className="border-2" onClick={() => document.querySelector('#curriculum').click()}>Upload a curriculum (pdf)</button>
+                                <input style={{display: 'none'}} type="file" id="curriculum" onChange={handleFileChange}/>
+                                {selectedFile && (
+                                    <div className="gap-4 flex flex-col items-center justify-center">
+                                        <p className="text-black">{selectedFile.name}</p>
+                                        <button className="border-2" onClick={handleUpload}>
+                                            Upload File
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
+                            <p className="font-light text-red-600 text-[0.8em]">{promptError}</p>
                             <IconContext.Provider value={{ color: 'black', size: '2rem' }}>
                                 <AiOutlineLoading style = {{ display: loaderDisplayLoad() }} className="animate-spin"/>
                             </IconContext.Provider>

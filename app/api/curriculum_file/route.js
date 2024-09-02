@@ -2,9 +2,8 @@ import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const systemPrompt = `
-Your job is to take the user's prompt and generate a JSON object of 10 subtopics of the subject for the user to study.
-If the input is nonsensical, return {subtopics: ['inputError']}
-return as: {subtopics: [ListOfItems]}
+
+
 `
 
 export async function POST(req){
