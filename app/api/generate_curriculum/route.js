@@ -1,17 +1,12 @@
 import { NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const systemPrompt = `
-
-
-`
-
 export async function POST(req){
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash", generationConfig: { responseMimeType: "application/json" } });
     const data = await req.text(); // Get the prompt
 
-    let response = await model.generateContentStream(systemPrompt+data)
+    let response = await model.generateContentStream(data)
     const stream = new ReadableStream({
         async start(controller){
             try {

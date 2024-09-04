@@ -13,7 +13,7 @@ import { AiOutlineLoading } from "react-icons/ai";
 import { LuMenuSquare } from "react-icons/lu";
 import { IoMdClose } from "react-icons/io";
 import MarkdownView from 'react-showdown';
-import pdfToText from "react-pdftotext";
+import pdfToText from "react-pdftotext-temppackage";
 
 export default function Generate(){
     const [input, setInput] = useState('')
@@ -63,6 +63,29 @@ export default function Generate(){
                 const docSnap = await getDoc(docRef)
                 try {
                     var currCategories = Object.keys(docSnap.data()[subject]['topics']).sort()
+                    if (currCategories.length==0){
+                        const response = await fetch("/api/curriculum_topic", {
+                            method: "POST",
+                            headers: {
+                              "Content-Type": "text/plain",
+                            },
+                            body: JSON.stringify(docSnap.data()[subject]['curriculum']),
+                        })
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        var returnedQ = ''
+    
+                        while (true){
+                            const { done, value } = await reader.read()
+                            if (done) break;
+                            const text = decoder.decode(value, { stream: true });
+                            returnedQ+=text
+                        }
+    
+                        setCard([JSON.parse(returnedQ)["subject"], JSON.parse(returnedQ)["question"]])
+                        setCardLoading('none')
+                        return
+                    }
                     var currCategory = currCategories[parseInt(currCategories.length*Math.random())]
                     const response = await fetch("/api/card", {
                         method: "POST",
@@ -99,6 +122,8 @@ export default function Generate(){
     useEffect(() => {
         if (page!='create'){
             setShowCreate('none')
+        } else {
+            setShowCreate('flex')
         }
     }, [page])
 
@@ -148,11 +173,11 @@ export default function Generate(){
                     var storedSessions = docSnap.data()
                     if (Object.keys(storedSessions).includes(currKey)){
                         delete storedSessions[currKey];
-                        console.log(storedSessions)
                         setDoc(docRef, storedSessions)
                         setSessions(Object.keys(storedSessions).sort())
                     }
                 }
+                setPage('create')
             }
             renderPrevSessions();
         }
@@ -265,7 +290,7 @@ export default function Generate(){
                     var topics = {}
                     for (let i = 0; i<returnedTopics.length; i++){
                         topics[returnedTopics[i]] = {
-                            streak: 0
+                            description: ''
                         }
                     }
                     prevData[input] = {
@@ -273,9 +298,6 @@ export default function Generate(){
                             day: date.getDate(),
                             month: date.getMonth()+1,
                             year: date.getFullYear(),
-                        },
-                        curriculum: {
-
                         },
                         topics
                     }
@@ -322,15 +344,19 @@ export default function Generate(){
     }
 
     const handleKeyPress = (event) => {
-        if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            onAnswer();
+        if (event){
+            if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                onAnswer();
+            }
         }
     };
     const handleNewTopics = (event) => {
-        if (event.key === "Enter" && !event.shiftKey) {
-            event.preventDefault();
-            newSession();
+        if (event){
+            if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault();
+                newSession();
+            }
         }
     };
 
@@ -391,11 +417,54 @@ export default function Generate(){
         setSelectedFile(file);
     };
     const handleUpload = async () => {
+        setLoading(true)
         var currFile = selectedFile
-        var newFile = ''
-        pdfToText(currFile).then((text) => {console.log(text)})
-        console.log(newFile)
-        setSelectedFile(null)
+        pdfToText(currFile).then(async (text) => {
+            if (text.length<31000){
+                const response = await fetch("/api/generate_curriculum", {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "text/plain",
+                    },
+                    body: JSON.stringify(`
+                        Take the following text, and seperate the text into several subcategories. Only return subcategories that are pertinent to the academic topic at hand: ignore any information that is not important to be memorizes, or not likely to be tested on. Return in the following format:
+                        {
+                            subject1: {
+                                description: "subject_text1"
+                            },
+                            subject2: {
+                                description: "subject_text2"
+                            },
+                            subject3: {
+                                description: "subject_text3"
+                            },
+                            etc,
+                        }
+                        
+                        The text is as follows:
+                        ${text}
+                    `),
+                })
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                var verified = ''
+        
+                while (true){
+                    const { done, value } = await reader.read()
+                    if (done) break;
+                    const text = decoder.decode(value, { stream: true });
+                    verified+=text
+                }
+                verified=JSON.parse(verified)
+                console.log(verified)
+            } else {
+                while (true){
+
+                }
+            }
+            setSelectedFile(null)
+            setLoading(false)
+        })
     };
 
     return (
@@ -471,12 +540,12 @@ export default function Generate(){
                                 onDragLeave={handleDragLeave}
                                 onDrop={handleDrop}
                             >
-                                <button style={{display: selectedFile ? "none" : "flex"}} className="border-2" onClick={() => document.querySelector('#curriculum').click()}>Upload a curriculum (pdf)</button>
+                                <button style={{display: (selectedFile ? "none" : "flex")}} className="border-2" onClick={() => document.querySelector('#curriculum').click()}>Upload a curriculum (pdf)</button>
                                 <input style={{display: 'none'}} type="file" id="curriculum" onChange={handleFileChange}/>
                                 {selectedFile && (
                                     <div className="gap-4 flex flex-col items-center justify-center">
                                         <p className="text-black">{selectedFile.name}</p>
-                                        <button className="border-2" onClick={handleUpload}>
+                                        <button style = {{ display: buttonDisplayLoad() }} className="border-2" onClick={handleUpload}>
                                             Upload File
                                         </button>
                                     </div>
