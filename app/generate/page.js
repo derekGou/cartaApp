@@ -421,24 +421,31 @@ export default function Generate(){
         var currFile = selectedFile
         pdfToText(currFile).then(async (text) => {
             if (text.length<31000){
+                let prevData = {}
+                if (docSnap.exists()){
+                    prevData = docSnap.data()
+                }
                 const response = await fetch("/api/generate_curriculum", {
                     method: "POST",
                     headers: {
                       "Content-Type": "text/plain",
                     },
                     body: JSON.stringify(`
-                        Take the following text, and seperate the text into several subcategories. Only return subcategories that are pertinent to the academic topic at hand: ignore any information that is not important to be memorizes, or not likely to be tested on. Return in the following format:
+                        Take the following text, and identify the title of the text. Next, seperate the text into several subcategories. Only return subcategories that are pertinent to the academic topic at hand: ignore any information that is not important to be memorizes, or not likely to be tested on. Return in the following format:
                         {
-                            subject1: {
-                                description: "subject_text1"
-                            },
-                            subject2: {
-                                description: "subject_text2"
-                            },
-                            subject3: {
-                                description: "subject_text3"
-                            },
-                            etc,
+                            title: "text_title",
+                            subTopics: {
+                                subject1: {
+                                    description: "subject_text1"
+                                },
+                                subject2: {
+                                    description: "subject_text2"
+                                },
+                                subject3: {
+                                    description: "subject_text3"
+                                },
+                                etc,
+                            }
                         }
                         
                         The text is as follows:
@@ -457,9 +464,56 @@ export default function Generate(){
                 }
                 verified=JSON.parse(verified)
                 console.log(verified)
+                prevData[verified['title']] = {
+                    date: {
+                        day: date.getDate(),
+                        month: date.getMonth()+1,
+                        year: date.getFullYear(),
+                    },
+                    topics: verified['subTopics']
+                }
+                await setDoc(docRef, prevData)
+                setInput('')
+                setSessions((prevData) => [...prevData, verified['title']])
             } else {
-                while (true){
+                var currCharacters = 0
+                topicList = {}
+                const runChunk = async () => {
+                    if (currCharacters>=text.length){
+                        return
+                    }
+                    const response = await fetch("/api/generate_curriculum", {
+                        method: "POST",
+                        headers: {
+                          "Content-Type": "text/plain",
+                        },
+                        body: JSON.stringify(`
+                            Given a chunk of text, return the name, start index and end index of the first chapter contained in the text. Return in the form:
+                            {
+                                name: "chapter_name",
+                                start: "start_character_index",
+                                end: "end_charcter_index"
+                            }
 
+                            ${text.slice(currCharacters, currCharacters+30000)}
+                        `),
+                    })
+                    const reader = response.body.getReader();
+                    const decoder = new TextDecoder();
+                    var verified = ''
+            
+                    while (true){
+                        const { done, value } = await reader.read()
+                        if (done) break;
+                        const text = decoder.decode(value, { stream: true });
+                        verified+=text
+                    }
+                    verified=JSON.parse(verified)
+                    currCharacters+=verified['end']+1
+                    topicList[verified['name']]=text.slice(currCharacters+verified['start'], currCharacters+verified['end'])
+                    setTimeout(function(){
+                        runChunk()
+                    }, 100)
                 }
             }
             setSelectedFile(null)
